@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魯班鎖：約分大師</title>
+    <style>
+        :root {
+            --wood-dark: #4e342e;
+            --wood-light: #d7ccc8;
+            --paper: #fff8e1;
+            --accent: #8d6e63;
+            --success: #2e7d32;
+            --error: #c62828;
+            --btn-hover: #6d4c41;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--wood-light);
+            background-image: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0.1) 100%);
+            color: var(--wood-dark);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            /* 針對 iPad 避免預設的手勢縮放干擾 */
+            touch-action: manipulation;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 95%;
+            max-width: 1024px; /* 適合 iPad 橫向的寬度 */
+            height: 85vh;
+            max-height: 768px;
+            background: var(--paper);
+            border: 12px solid var(--accent);
+            border-radius: 24px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 4px dashed var(--accent);
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .badge {
+            background: var(--accent);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .progress-bar {
+            font-size: 1.5rem;
+            color: var(--wood-dark);
+            font-weight: bold;
+            background: rgba(0,0,0,0.05);
+            padding: 10px 25px;
+            border-radius: 30px;
+        }
+
+        /* 橫向雙欄佈局 */
+        .main-content {
+            display: flex;
+            flex: 1;
+            padding: 30px;
+            gap: 40px;
+        }
+
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(141, 110, 99, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .right-panel {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .scene-icon {
+            font-size: 8rem;
+            margin-bottom: 20px;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        #level-desc {
+            font-size: 1.8rem;
+            line-height: 1.4;
+            color: var(--wood-dark);
+            margin: 0;
+        }
+
+        .question-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            border: 3px solid #e0e0e0;
+        }
+
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 4.5rem;
+            font-weight: bold;
+        }
+
+        .numerator { padding: 10px 20px; }
+        .denominator { padding: 10px 20px; border-top: 8px solid var(--wood-dark); }
+
+        .equals { font-size: 4rem; color: var(--accent); font-weight: bold; }
+
+        /* 隱藏 iPad 輸入框的上下箭頭 */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        input {
+            width: 120px;
+            height: 90px;
+            font-size: 3.5rem;
+            text-align: center;
+            border: 4px solid var(--accent);
+            border-radius: 16px;
+            color: var(--wood-dark);
+            background: #fafafa;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        input:focus {
+            outline: none;
+            background: #fffde7;
+            border-color: #fbc02d;
+            box-shadow: 0 0 15px rgba(251, 192, 45, 0.5);
+            transform: scale(1.05);
+        }
+
+        .controls {
+            width: 100%;
+            text-align: center;
+        }
+
+        button.action-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            font-size: 2rem;
+            font-weight: bold;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 8px var(--wood-dark);
+            transition: all 0.1s;
+            letter-spacing: 2px;
+        }
+
+        button.action-btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 0px var(--wood-dark);
+        }
+
+        #hint-box {
+            margin-top: 30px;
+            min-height: 80px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.6rem;
+            font-weight: bold;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .hint-text { color: var(--error); background: #ffebee; border: 2px solid var(--error); padding: 15px 25px; border-radius: 12px; width: 100%; text-align: center; }
+        .success-text { color: var(--success); background: #e8f5e9; border: 2px solid var(--success); padding: 15px 25px; border-radius: 12px; width: 100%; text-align: center; }
+
+        /* 自訂彈出視窗 Modal */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        .modal-box {
+            background: var(--paper);
+            border: 8px solid var(--accent);
+            border-radius: 24px;
+            padding: 50px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #modal-overlay.show .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 2.5rem;
+            color: var(--wood-dark);
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .modal-msg {
+            font-size: 1.8rem;
+            color: #555;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .modal-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 6px #1b5e20;
+        }
+
+        .modal-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px #1b5e20;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="header">
+        <div id="level-badge" class="badge">等級：木匠學徒</div>
+        <div class="progress-bar">工程進度：<span id="current-q">1</span> / 5</div>
+    </div>
+
+    <div class="main-content">
+        <!-- 左側：情境與提示區 -->
+        <div class="left-panel">
+            <div id="scene" class="scene-icon">🪑</div>
+            <h2 id="level-desc">將木材修飾成最精簡的狀態吧！</h2>
+        </div>
+
+        <!-- 右側：作答與控制區 -->
+        <div class="right-panel">
+            <div class="question-area">
+                <div class="fraction">
+                    <div id="q-num" class="numerator">?</div>
+                    <div id="q-den" class="denominator">?</div>
+                </div>
+                <div class="equals">=</div>
+                <div class="fraction">
+                    <input type="number" id="input-num" placeholder="?">
+                    <div class="denominator">
+                        <input type="number" id="input-den" placeholder="?">
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="action-btn" onclick="checkAnswer()">嘗試鎖上魯班鎖</button>
+            </div>
+
+            <div id="hint-box"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 自訂彈出視窗 -->
+<div id="modal-overlay">
+    <div class="modal-box">
+        <h2 id="modal-title" class="modal-title">恭喜過關！</h2>
+        <p id="modal-msg" class="modal-msg">訊息內容</p>
+        <button id="modal-btn" class="modal-btn" onclick="closeModal()">繼續下一關</button>
+    </div>
+</div>
+
+<script>
+    let level = 1; // 1: 低, 2: 中, 3: 高
+    let questionIndex = 1;
+    let currentQ = { n: 0, d: 0, targetN: 0, targetD: 0 };
+    let modalCallback = null;
+
+    const levelSettings = {
+        1: { title: "木匠學徒", icon: "🪑", bg: "#d7ccc8", accent: "#8d6e63", desc: "這是一般的木椅，將木材修飾成最精簡的狀態吧！", min: 2, max: 6, factorMax: 4 },
+        2: { title: "資深工匠", icon: "🏯", bg: "#fff9c4", accent: "#f57f17", desc: "要建造堅固的涼亭，尺寸計算必須完全精準無誤！", min: 6, max: 15, factorMax: 8 },
+        3: { title: "大師魯班", icon: "👑", bg: "#e1bee7", accent: "#6a1b9a", desc: "修復傳說中的宮殿，挑戰最複雜的結構設計！", min: 12, max: 30, factorMax: 12 }
+    };
+
+    function gcd(a, b) {
+        return b === 0 ? a : gcd(b, a % b);
+    }
+
+    function generateQuestion() {
+        const config = levelSettings[level];
+        let n, d, commonFactor;
+
+        // 隨機生成最簡分數
+        do {
+            n = Math.floor(Math.random() * config.max) + config.min;
+            d = n + Math.floor(Math.random() * config.max) + 1;
+        } while (gcd(n, d) !== 1);
+
+        // 隨機選擇一個擴分倍率來產生題目
+        if (level === 1) {
+            commonFactor = [2, 3, 5][Math.floor(Math.random() * 3)];
+        } else if (level === 2) {
+            commonFactor = [4, 6, 8, 9][Math.floor(Math.random() * 4)];
+        } else {
+            commonFactor = Math.floor(Math.random() * 10) + 11;
+        }
+
+        currentQ.targetN = n;
+        currentQ.targetD = d;
+        currentQ.n = n * commonFactor;
+        currentQ.d = d * commonFactor;
+
+        document.getElementById('q-num').innerText = currentQ.n;
+        document.getElementById('q-den').innerText = currentQ.d;
+        
+        const inputNum = document.getElementById('input-num');
+        const inputDen = document.getElementById('input-den');
+        inputNum.value = "";
+        inputDen.value = "";
+        
+        // 讓 iPad 使用者可以清楚看到焦點
+        document.getElementById('hint-box').innerHTML = "";
+        inputNum.focus(); 
+    }
+
+    function checkAnswer() {
+        const userN = parseInt(document.getElementById('input-num').value);
+        const userD = parseInt(document.getElementById('input-den').value);
+        const hintBox = document.getElementById('hint-box');
+
+        if (isNaN(userN) || isNaN(userD)) {
+            hintBox.innerHTML = "<div class='hint-text'>請輸入分子和分母！</div>";
+            return;
+        }
+
+        // 正確答案檢查
+        if (userN === currentQ.targetN && userD === currentQ.targetD) {
+            hintBox.innerHTML = "<div class='success-text'>✨ 太精準了！結構非常完美！ ✨</div>";
+            
+            setTimeout(() => {
+                if (questionIndex < 5) {
+                    questionIndex++;
+                    updateUI();
+                    generateQuestion();
+                } else {
+                    nextLevel();
+                }
+            }, 1000);
+        } else {
+            // 錯誤提示邏輯
+            provideHint(userN, userD);
+        }
+    }
+
+    function provideHint(un, ud) {
+        const hintBox = document.getElementById('hint-box');
+        const qn = currentQ.n;
+        const qd = currentQ.d;
+        
+        // 找出題目數字的一個公因數
+        let common = 0;
+        for (let i = 2; i <= Math.min(qn, qd); i++) {
+            if (qn % i === 0 && qd % i === 0) {
+                common = i;
+                break;
+            }
+        }
+
+        // 判斷錯誤類型並給予提示
+        if (un / ud === qn / qd) {
+            hintBox.innerHTML = `<div class='hint-text'>提示：分數值是正確的，但還不是「最簡」形式喔！再除以公因數看看。</div>`;
+        } else {
+            hintBox.innerHTML = `<div class='hint-text'>提示：結構不穩！試著把分子和分母都同時除以 <b>${common}</b> 看看？</div>`;
+        }
+    }
+
+    function updateUI() {
+        const config = levelSettings[level];
+        document.getElementById('level-badge').innerText = `等級：${config.title}`;
+        document.getElementById('scene').innerText = config.icon;
+        document.getElementById('level-desc').innerText = config.desc;
+        document.getElementById('current-q').innerText = questionIndex;
+        
+        // 更新主題顏色
+        document.body.style.backgroundColor = config.bg;
+        document.documentElement.style.setProperty('--accent', config.accent);
+    }
+
+    function nextLevel() {
+        if (level < 3) {
+            showModal(
+                `恭喜升級！`, 
+                `你已經順利通過了「${levelSettings[level].title}」的考驗！<br>準備好迎接更複雜的結構了嗎？`,
+                "前往下一關",
+                () => {
+                    level++;
+                    questionIndex = 1;
+                    updateUI();
+                    generateQuestion();
+                }
+            );
+        } else {
+            showModal(
+                `🏆 大功告成！`, 
+                `太厲害了！你已經修復了所有古建築，成為真正的「魯班大師」！`,
+                "重新挑戰",
+                () => {
+                    level = 1;
+                    questionIndex = 1;
+                    updateUI();
+                    generateQuestion();
+                }
+            );
+        }
+    }
+
+    // 自訂 Modal 控制函數
+    function showModal(title, msg, btnText, callback) {
+        document.getElementById('modal-title').innerHTML = title;
+        document.getElementById('modal-msg').innerHTML = msg;
+        document.getElementById('modal-btn').innerText = btnText;
+        document.getElementById('modal-overlay').classList.add('show');
+        modalCallback = callback;
+    }
+
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.remove('show');
+        if (modalCallback) {
+            setTimeout(modalCallback, 300); // 等待動畫結束後執行回呼
+            modalCallback = null;
+        }
+    }
+
+    // 監聽 Enter 鍵，方便使用外接鍵盤的 iPad 玩家
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            const modalOverlay = document.getElementById('modal-overlay');
+            if (modalOverlay.classList.contains('show')) {
+                closeModal();
+            } else {
+                checkAnswer();
+            }
+        }
+    });
+
+    // 初始化遊戲
+    window.onload = () => {
+        updateUI();
+        generateQuestion();
+    };
+</script>
+
+</body>
+</html>
